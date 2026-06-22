@@ -508,7 +508,7 @@ function App() {
                   <div key={field.name} className="form-field">
                     <label className="field-label">{field.label}</label>
                     <AddressSearch
-                      value={formData.address}
+                      value={formData.address.replace(/\n/g, ', ')}
                       onChange={(addressValue) =>
                         setFormData((prev) => ({
                           ...prev,
