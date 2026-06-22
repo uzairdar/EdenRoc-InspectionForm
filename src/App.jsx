@@ -549,10 +549,9 @@ function App() {
                     {!isReadOnly ? (
                       <button
                         type="button"
-                        className="modal-secondary"
+                        className="modal-secondary fetch-details-btn"
                         onClick={fetchServiceM8Details}
                         disabled={serviceM8Loading}
-                        style={{ marginTop: '0.75rem' }}
                       >
                         {serviceM8Loading ? 'Fetching…' : 'Fetch details'}
                       </button>
@@ -572,7 +571,7 @@ function App() {
             })}
           </div>
           {(serviceM8Loading || serviceM8Error) && (
-            <div className="field-note" style={{ marginTop: '0.5rem', color: serviceM8Error ? '#b91c1c' : '#111827' }}>
+            <div className={`field-note service-status-note ${serviceM8Error ? 'is-error' : ''}`}>
               {serviceM8Loading ? 'Looking up job in ServiceM8...' : serviceM8Error}
             </div>
           )}
@@ -779,16 +778,16 @@ function App() {
       </form>
 
       {error ? (
-        <section className="summary-card" style={{ borderColor: '#dc2626', backgroundColor: '#fee2e2' }}>
-          <h2 style={{ color: '#991b1b' }}>Error</h2>
-          <p style={{ color: '#7f1d1d' }}>{error}</p>
+        <section className="summary-card alert-card is-error">
+          <h2>Error</h2>
+          <p>{error}</p>
         </section>
       ) : null}
 
       {successMessage ? (
-        <section className="summary-card" style={{ borderColor: '#16a34a', backgroundColor: '#dcfce7' }}>
-          <h2 style={{ color: '#166534' }}>Success</h2>
-          <p style={{ color: '#15803d' }}>{successMessage}</p>
+        <section className="summary-card alert-card is-success">
+          <h2>Success</h2>
+          <p>{successMessage}</p>
         </section>
       ) : null}
 

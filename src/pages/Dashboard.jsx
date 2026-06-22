@@ -87,6 +87,15 @@ export default function Dashboard() {
     return String(value)
   }
 
+  const getStatusClass = (status) => {
+    const value = String(status || '').toLowerCase()
+    if (value.includes('quote')) return 'is-quote'
+    if (value.includes('work')) return 'is-work-order'
+    if (value.includes('completed')) return 'is-completed'
+    if (value.includes('unsuccussfull') || value.includes('unsuccessful')) return 'is-unsuccessful'
+    return 'is-default'
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -142,22 +151,34 @@ export default function Dashboard() {
 
             <div className="jobs-grid">
               {filteredInspections.map((inspection) => (
-                <button
+                <article
                   key={inspection._id}
-                  type="button"
                   className="job-card"
-                  onClick={() => viewInspection(inspection)}
                 >
                   <div className="job-card-main">
                     <span className="job-card-title">{inspection.jobNumber || 'No job number'}</span>
-                    <span className="job-card-status">{inspection.jobStatus || 'Quote'}</span>
+                    <span className={`job-card-status ${getStatusClass(inspection.jobStatus)}`}>
+                      {inspection.jobStatus || 'Quote'}
+                    </span>
                   </div>
                   <div className="job-card-details">
                     <span>{inspection.customerName || 'No customer name'}</span>
                     <span>{inspection.email || 'No email'}</span>
                     <span>{inspection.staffName || 'No staff name'}</span>
                   </div>
-                </button>
+
+                  <div className="job-card-actions">
+                    <button type="button" className="modal-secondary" onClick={() => viewInspection(inspection)}>
+                      View
+                    </button>
+                    <button type="button" className="form-submit" onClick={() => editInspection(inspection)}>
+                      Edit
+                    </button>
+                    <button type="button" className="modal-delete" onClick={() => removeInspection(inspection)}>
+                      Delete
+                    </button>
+                  </div>
+                </article>
               ))}
             </div>
           </div>
