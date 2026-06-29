@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import AddressSearch from './components/AddressSearch'
 import {
@@ -109,6 +109,7 @@ function App() {
   const [isViewMode, setIsViewMode] = useState(false)
   const [serviceM8Loading, setServiceM8Loading] = useState(false)
   const [serviceM8Error, setServiceM8Error] = useState(null)
+  const submitLockRef = useRef(false)
 
   const navigateToHash = (hash) => {
     window.history.pushState(null, '', hash)
@@ -242,18 +243,31 @@ function App() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
+    if (isViewMode) {
+      return
+    }
+
+    if (submitLockRef.current || loading) {
+      return
+    }
+
+    const normalizedJobNumber = (formData.jobNumber || '').trim()
+    if (!normalizedJobNumber) {
+      setError('Job Number is required before saving inspection data.')
+      setSuccessMessage(null)
+      return
+    }
+
+    submitLockRef.current = true
     setLoading(true)
     setError(null)
     setSuccessMessage(null)
 
-    if (isViewMode) {
-      setLoading(false)
-      return
-    }
-
     try {
       const dataToSubmit = {
         ...formData,
+        jobNumber: normalizedJobNumber,
         manufacturerDetails,
       }
 
@@ -271,7 +285,8 @@ function App() {
       })
 
       if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`)
+        const result = await response.json().catch(() => null)
+        throw new Error(result?.error || result?.message || `Error: ${response.statusText}`)
       }
 
       const result = await response.json()
@@ -285,6 +300,7 @@ function App() {
       setSubmitted(false)
     } finally {
       setLoading(false)
+      submitLockRef.current = false
     }
   }
 
@@ -691,7 +707,7 @@ function App() {
           <div className="section-subhead">
             <h3>Measurement table</h3>
           </div>
-          <div className="table-grid">
+          <div className="table-grid measurement-grid">
             {tableFields.map((field) => (
               <FormField
                 key={field.name}
@@ -766,7 +782,7 @@ function App() {
 
         {!isViewMode ? (
           <div className="form-actions">
-            <button type="submit" className="form-submit" disabled={loading}>
+            <button type="submit" className="form-submit" disabled={loading || !formData.jobNumber?.trim()}>
               {loading ? 'Saving...' : 'Save inspection data'}
             </button>
           </div>

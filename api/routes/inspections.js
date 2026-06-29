@@ -181,9 +181,16 @@ router.post('/', async (req, res) => {
     centreDth: req.body.centreDth ?? req.body.centreDtc,
     rhsDth: req.body.rhsDth ?? req.body.rhsDtc,
   }
-  delete payload.lhsDtc
-  delete payload.centreDtc
-  delete payload.rhsDtc
+  payload.jobNumber = String(payload.jobNumber || '').trim()
+
+  if (!payload.jobNumber) {
+    return res.status(400).json({
+      success: false,
+      message: 'Job Number is required before saving inspection data.',
+      error: 'Job Number is required before saving inspection data.',
+    })
+  }
+
   try {
     const inspection = new Inspection(payload)
     const saved = await inspection.save()
@@ -323,6 +330,16 @@ router.put('/:id', async (req, res) => {
   delete payload.lhsDtc
   delete payload.centreDtc
   delete payload.rhsDtc
+  payload.jobNumber = String(payload.jobNumber || '').trim()
+
+  if (!payload.jobNumber) {
+    return res.status(400).json({
+      success: false,
+      message: 'Job Number is required before updating inspection data.',
+      error: 'Job Number is required before updating inspection data.',
+    })
+  }
+
   try {
     const inspection = await Inspection.findByIdAndUpdate(req.params.id, payload, {
       new: true,
