@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react'
 import '../App.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-const importantFields = ['jobNumber', 'customerName', 'email', 'staffName', 'jobStatus']
 const searchableKeys = ['jobNumber', 'customerName', 'staffName', 'email']
+const PAGE_SIZE = 6
 
 export default function Dashboard() {
   const [inspections, setInspections] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -40,6 +41,23 @@ export default function Dashboard() {
     )
   }, [inspections, searchTerm])
 
+  const totalPages = Math.max(1, Math.ceil(filteredInspections.length / PAGE_SIZE))
+
+  const paginatedInspections = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE
+    return filteredInspections.slice(startIndex, startIndex + PAGE_SIZE)
+  }, [currentPage, filteredInspections])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
   const navigateToHash = (hash) => {
     window.history.pushState(null, '', hash)
     window.dispatchEvent(new Event('hashchange'))
@@ -47,6 +65,11 @@ export default function Dashboard() {
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value)
+  }
+
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages || page === currentPage) return
+    setCurrentPage(page)
   }
 
   const viewInspection = (inspection) => {
@@ -150,7 +173,7 @@ export default function Dashboard() {
             )}
 
             <div className="jobs-grid">
-              {filteredInspections.map((inspection) => (
+              {paginatedInspections.map((inspection) => (
                 <article
                   key={inspection._id}
                   className="job-card"
@@ -182,6 +205,42 @@ export default function Dashboard() {
                 </article>
               ))}
             </div>
+
+            {!loading && filteredInspections.length > PAGE_SIZE ? (
+              <div className="pagination-bar">
+                <p className="field-note pagination-summary">
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredInspections.length)} of {filteredInspections.length}
+                </p>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    className="modal-secondary pagination-button"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`pagination-page ${page === currentPage ? 'is-active' : ''}`}
+                      onClick={() => goToPage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="modal-secondary pagination-button"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

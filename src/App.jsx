@@ -520,7 +520,7 @@ function App() {
             <div className="version-summary">
               <span className="version-pill">Version {activeVersion.versionNumber || 1}</span>
               <span className="field-note">
-                {activeVersion.isCurrent ? 'Current version' : 'Historic version'} • Updated {formatVersionStamp(activeVersion.updatedAt)}
+                {activeVersion.isCurrent ? 'Current version' : 'Historic version'} • Created {formatVersionStamp(activeVersion.createdAt)}
               </span>
             </div>
           ) : null}
@@ -644,7 +644,7 @@ function App() {
                   <div className="version-item-top">
                     <div>
                       <strong>Version {version.versionNumber || 1}</strong>
-                      <div className="field-note">{formatVersionStamp(version.updatedAt || version.createdAt)}</div>
+                      <div className="field-note">Created {formatVersionStamp(version.createdAt)}</div>
                     </div>
                     <span className={`job-card-status ${version.isCurrent ? 'is-completed' : 'is-default'}`}>
                       {version.isCurrent ? 'Current' : 'Archived'}

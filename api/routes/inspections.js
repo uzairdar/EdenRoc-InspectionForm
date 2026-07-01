@@ -212,9 +212,17 @@ const createNextInspectionVersion = async (baseInspection, payload) => {
   const latestVersion = await Inspection.findOne({ versionGroupId }).sort({ versionNumber: -1 }).lean()
   const nextVersionNumber = (latestVersion?.versionNumber || baseInspection.versionNumber || 1) + 1
 
-  await Inspection.updateMany({ versionGroupId, isCurrent: { $ne: false } }, { $set: { isCurrent: false } })
+  await Inspection.updateMany(
+    { versionGroupId, isCurrent: { $ne: false } },
+    { $set: { isCurrent: false } },
+    { timestamps: false }
+  )
   if (!baseInspection.versionGroupId) {
-    await Inspection.updateOne({ _id: baseInspection._id }, { $set: { versionGroupId, isCurrent: false } })
+    await Inspection.updateOne(
+      { _id: baseInspection._id },
+      { $set: { versionGroupId, isCurrent: false } },
+      { timestamps: false }
+    )
   }
 
   const previousDoc = baseInspection.toObject ? baseInspection.toObject() : { ...baseInspection }
@@ -483,17 +491,29 @@ router.put('/:id', async (req, res) => {
 // DELETE - Delete an inspection record
 router.delete('/:id', async (req, res) => {
   try {
-    const inspection = await Inspection.findByIdAndDelete(req.params.id)
+    const inspection = await Inspection.findById(req.params.id)
     if (!inspection) {
       return res.status(404).json({
         success: false,
         message: 'Inspection not found',
       })
     }
+
+    const versionGroupId = inspection.versionGroupId || inspection._id.toString()
+    const deleteResult = await Inspection.deleteMany({ versionGroupId })
+
+    // Backward compatibility: if no grouped records were found, delete the selected record directly.
+    if (!deleteResult.deletedCount) {
+      await Inspection.deleteOne({ _id: inspection._id })
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Inspection deleted successfully',
-      data: inspection,
+      message: `Inspection and ${deleteResult.deletedCount || 1} version(s) deleted successfully`,
+      data: {
+        deletedRecord: inspection,
+        deletedCount: deleteResult.deletedCount || 1,
+      },
     })
   } catch (error) {
     res.status(400).json({
