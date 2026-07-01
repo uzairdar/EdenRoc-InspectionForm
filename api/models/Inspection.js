@@ -13,11 +13,29 @@ const inspectionSchema = new mongoose.Schema(
     // Job Details
     jobNumber: String,
     job_uuid: String,
+    versionGroupId: {
+      type: String,
+      index: true,
+    },
+    versionNumber: {
+      type: Number,
+      default: 1,
+    },
+    previousVersionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Inspection',
+      default: null,
+    },
+    isCurrent: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
     date: Date,
     staffName: String,
     jobStatus: {
       type: String,
-      enum: ['Quote', 'Work Order', 'Completed', 'Unsuccussfull'],
+      enum: ['Quote', 'Work Order', 'Completed', 'Unsuccussfull'],  
       default: 'Quote',
     },
 

@@ -109,6 +109,7 @@ function App() {
   const [isViewMode, setIsViewMode] = useState(false)
   const [serviceM8Loading, setServiceM8Loading] = useState(false)
   const [serviceM8Error, setServiceM8Error] = useState(null)
+  const [versionHistory, setVersionHistory] = useState([])
   const submitLockRef = useRef(false)
 
   const navigateToHash = (hash) => {
@@ -146,6 +147,7 @@ function App() {
       setIsViewMode(false)
       setFormData(initialForm)
       setManufacturerDetails({})
+      setVersionHistory([])
       setSuccessMessage(null)
       setSubmitted(false)
     }
@@ -178,6 +180,7 @@ function App() {
           ...inspectionData,
           date: normalizeDate(inspectionData.date),
         })
+        setVersionHistory(result.versions || (result.data ? [result.data] : []))
         setManufacturerDetails(result.data.manufacturerDetails || {})
         setSuccessMessage(null)
         setSubmitted(false)
@@ -307,6 +310,32 @@ function App() {
   const selectedManufacturer = formData.manufacturer
   const selectedConfig = manufacturerConfigs[selectedManufacturer] || []
   const isReadOnly = isViewMode
+
+  const hasCustomOption = (field) =>
+    field?.type === 'select' && Array.isArray(field.options) && field.options.some((option) => String(option).toLowerCase() === 'custom')
+
+  const isCustomSelected = (fieldName) => String(manufacturerDetails[fieldName] || '').toLowerCase() === 'custom'
+
+  const getCustomValueKey = (fieldName) => `${fieldName}CustomValue`
+  const activeVersion = versionHistory.find((version) => version._id === editInspectionId) || null
+
+  const openVersion = (versionId, mode = 'view') => {
+    if (!versionId) return
+    navigateToHash(`#/${mode}/${versionId}`)
+  }
+
+  const formatVersionStamp = (value) => {
+    if (!value) return 'Unknown update'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'Unknown update'
+    return date.toLocaleString(undefined, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  }
 
   const mapServiceM8ToForm = (job) => {
     const mapped = {}
@@ -487,6 +516,14 @@ function App() {
             Complete the customer, job, damage and materials details in a polished
             workflow designed for speed and accuracy.
           </p>
+          {activeVersion ? (
+            <div className="version-summary">
+              <span className="version-pill">Version {activeVersion.versionNumber || 1}</span>
+              <span className="field-note">
+                {activeVersion.isCurrent ? 'Current version' : 'Historic version'} • Updated {formatVersionStamp(activeVersion.updatedAt)}
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="header-action-group">
           <button type="button" className="modal-secondary" onClick={goBackToDashboard}>
@@ -592,6 +629,47 @@ function App() {
             </div>
           )}
         </FormCard>
+
+        {versionHistory.length > 0 ? (
+          <FormCard
+            title="Version History"
+            subtitle="Every job update is stored as a separate revision so you can track the full decision trail."
+          >
+            <div className="version-history-grid">
+              {versionHistory.map((version) => (
+                <article
+                  key={version._id}
+                  className={`version-item ${version._id === editInspectionId ? 'is-active' : ''}`}
+                >
+                  <div className="version-item-top">
+                    <div>
+                      <strong>Version {version.versionNumber || 1}</strong>
+                      <div className="field-note">{formatVersionStamp(version.updatedAt || version.createdAt)}</div>
+                    </div>
+                    <span className={`job-card-status ${version.isCurrent ? 'is-completed' : 'is-default'}`}>
+                      {version.isCurrent ? 'Current' : 'Archived'}
+                    </span>
+                  </div>
+                  <div className="version-item-meta">
+                    <span>{version.jobStatus || 'Quote'}</span>
+                    <span>{version.staffName || 'No staff assigned'}</span>
+                    <span>{version.customerName || 'No customer name'}</span>
+                  </div>
+                  <div className="job-card-actions">
+                    <button type="button" className="modal-secondary" onClick={() => openVersion(version._id, 'view')}>
+                      View version
+                    </button>
+                    {version._id === editInspectionId ? null : (
+                      <button type="button" className="form-submit" onClick={() => openVersion(version._id, 'edit')}>
+                        Use as base
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </FormCard>
+        ) : null}
 
         <FormCard title="Damage Details" subtitle="Existing door damage">
           <div className="form-grid">
@@ -739,15 +817,32 @@ function App() {
                 Custom options for <strong>{selectedManufacturer}</strong>.
               </p>
               <div className="form-grid">
-                {selectedConfig.map((field) => (
-                  <FormField
-                    key={field.name}
-                    {...field}
-                    value={manufacturerDetails[field.name] || ''}
-                    onChange={handleManufacturerDetail}
-                    disabled={isReadOnly}
-                  />
-                ))}
+                {selectedConfig.map((field) => {
+                  const customValueKey = getCustomValueKey(field.name)
+                  const showCustomInput = hasCustomOption(field) && isCustomSelected(field.name)
+
+                  return (
+                    <div key={field.name} className="form-field-group">
+                      <FormField
+                        {...field}
+                        value={manufacturerDetails[field.name] || ''}
+                        onChange={handleManufacturerDetail}
+                        disabled={isReadOnly}
+                      />
+                      {showCustomInput ? (
+                        <FormField
+                          label={`${field.label} (Custom value)`}
+                          name={customValueKey}
+                          type="text"
+                          value={manufacturerDetails[customValueKey] || ''}
+                          onChange={handleManufacturerDetail}
+                          placeholder={`Enter custom ${field.label.toLowerCase()}`}
+                          disabled={isReadOnly}
+                        />
+                      ) : null}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ) : null}

@@ -165,6 +165,7 @@ export default function Dashboard() {
                     <span>{inspection.customerName || 'No customer name'}</span>
                     <span>{inspection.email || 'No email'}</span>
                     <span>{inspection.staffName || 'No staff name'}</span>
+                    <span>Version {inspection.versionNumber || 1}</span>
                   </div>
 
                   <div className="job-card-actions">

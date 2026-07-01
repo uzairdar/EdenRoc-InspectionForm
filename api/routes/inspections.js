@@ -172,17 +172,74 @@ const createServiceM8JobNote = async (jobId, noteText) => {
   return data
 }
 
+const normalizeInspectionPayload = (body) => {
+  const payload = {
+    ...body,
+    lhsDth: body.lhsDth ?? body.lhsDtc,
+    centreDth: body.centreDth ?? body.centreDtc,
+    rhsDth: body.rhsDth ?? body.rhsDtc,
+  }
+
+  delete payload.lhsDtc
+  delete payload.centreDtc
+  delete payload.rhsDtc
+  payload.jobNumber = String(payload.jobNumber || '').trim()
+
+  return payload
+}
+
+const buildVersionHistory = async (inspection) => {
+  if (!inspection) {
+    return []
+  }
+
+  const versionGroupId = inspection.versionGroupId || inspection._id.toString()
+  const versions = await Inspection.find({
+    $or: [
+      { versionGroupId },
+      { _id: inspection._id, versionGroupId: { $exists: false } },
+    ],
+  })
+    .sort({ versionNumber: -1, updatedAt: -1 })
+    .select('_id jobNumber versionNumber isCurrent createdAt updatedAt jobStatus staffName customerName')
+    .lean()
+
+  return versions
+}
+
+const createNextInspectionVersion = async (baseInspection, payload) => {
+  const versionGroupId = baseInspection.versionGroupId || baseInspection._id.toString()
+  const latestVersion = await Inspection.findOne({ versionGroupId }).sort({ versionNumber: -1 }).lean()
+  const nextVersionNumber = (latestVersion?.versionNumber || baseInspection.versionNumber || 1) + 1
+
+  await Inspection.updateMany({ versionGroupId, isCurrent: { $ne: false } }, { $set: { isCurrent: false } })
+  if (!baseInspection.versionGroupId) {
+    await Inspection.updateOne({ _id: baseInspection._id }, { $set: { versionGroupId, isCurrent: false } })
+  }
+
+  const previousDoc = baseInspection.toObject ? baseInspection.toObject() : { ...baseInspection }
+  delete previousDoc._id
+  delete previousDoc.__v
+  delete previousDoc.createdAt
+  delete previousDoc.updatedAt
+
+  const nextInspection = new Inspection({
+    ...previousDoc,
+    ...payload,
+    versionGroupId,
+    versionNumber: nextVersionNumber,
+    previousVersionId: baseInspection._id,
+    isCurrent: true,
+  })
+
+  return nextInspection.save()
+}
+
 // POST - Create a new inspection record
 router.post('/', async (req, res) => {
   console.log('Received new inspection record:', req.body)
-  const payload = {
-    ...req.body,
-    lhsDth: req.body.lhsDth ?? req.body.lhsDtc,
-    centreDth: req.body.centreDth ?? req.body.centreDtc,
-    rhsDth: req.body.rhsDth ?? req.body.rhsDtc,
-  }
-  payload.jobNumber = String(payload.jobNumber || '').trim()
-
+  const payload = normalizeInspectionPayload(req.body)
+  
   if (!payload.jobNumber) {
     return res.status(400).json({
       success: false,
@@ -192,7 +249,41 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const inspection = new Inspection(payload)
+    const existingCurrent = await Inspection.findOne({
+      jobNumber: payload.jobNumber,
+      isCurrent: { $ne: false },
+    }).sort({ updatedAt: -1 })
+
+    if (existingCurrent) {
+      const savedVersion = await createNextInspectionVersion(existingCurrent, payload)
+
+      if (SERVICE_M8_API_KEY) {
+        try {
+          const serviceJobUuid = payload.job_uuid || (payload.jobNumber ? await findServiceM8JobByNumber(payload.jobNumber).then((job) => job?.uuid) : null)
+          if (serviceJobUuid) {
+            const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`
+            const inspectionLink = `${origin}/#/view/${savedVersion._id}`
+            await createServiceM8JobNote(serviceJobUuid, `Inspection details available at: ${inspectionLink}`)
+          }
+        } catch (integrationError) {
+          console.warn('ServiceM8 integration failed:', integrationError.message)
+        }
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Inspection saved as a new version for this job number',
+        data: savedVersion,
+      })
+    }
+
+    const inspection = new Inspection({
+      ...payload,
+      versionNumber: 1,
+      previousVersionId: null,
+      isCurrent: true,
+    })
+    inspection.versionGroupId = inspection._id.toString()
     const saved = await inspection.save()
     if (SERVICE_M8_API_KEY) {
       try {
@@ -224,7 +315,38 @@ router.post('/', async (req, res) => {
 // GET - Fetch all inspection records
 router.get('/', async (req, res) => {
   try {
-    const inspections = await Inspection.find().sort({ createdAt: -1 })
+    const inspections = await Inspection.aggregate([
+      {
+        $match: {
+          jobNumber: { $exists: true, $ne: '' },
+        },
+      },
+      {
+        $sort: {
+          isCurrent: -1,
+          versionNumber: -1,
+          updatedAt: -1,
+          createdAt: -1,
+        },
+      },
+      {
+        $group: {
+          _id: '$jobNumber',
+          doc: { $first: '$$ROOT' },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: '$doc',
+        },
+      },
+      {
+        $sort: {
+          updatedAt: -1,
+          createdAt: -1,
+        },
+      },
+    ])
     res.status(200).json({
       success: true,
       data: inspections,
@@ -306,9 +428,11 @@ router.get('/:id', async (req, res) => {
         message: 'Inspection not found',
       })
     }
+    const versions = await buildVersionHistory(inspection)
     res.status(200).json({
       success: true,
       data: inspection,
+      versions,
     })
   } catch (error) {
     res.status(400).json({
@@ -321,16 +445,7 @@ router.get('/:id', async (req, res) => {
 
 // PUT - Update an inspection record
 router.put('/:id', async (req, res) => {
-  const payload = {
-    ...req.body,
-    lhsDth: req.body.lhsDth ?? req.body.lhsDtc,
-    centreDth: req.body.centreDth ?? req.body.centreDtc,
-    rhsDth: req.body.rhsDth ?? req.body.rhsDtc,
-  }
-  delete payload.lhsDtc
-  delete payload.centreDtc
-  delete payload.rhsDtc
-  payload.jobNumber = String(payload.jobNumber || '').trim()
+  const payload = normalizeInspectionPayload(req.body)
 
   if (!payload.jobNumber) {
     return res.status(400).json({
@@ -341,20 +456,20 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    const inspection = await Inspection.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
-      runValidators: true,
-    })
+    const inspection = await Inspection.findById(req.params.id)
     if (!inspection) {
       return res.status(404).json({
         success: false,
         message: 'Inspection not found',
       })
     }
+
+    const savedInspection = await createNextInspectionVersion(inspection, payload)
+
     res.status(200).json({
       success: true,
-      message: 'Inspection updated successfully',
-      data: inspection,
+      message: 'Inspection updated successfully as a new version',
+      data: savedInspection,
     })
   } catch (error) {
     res.status(400).json({
