@@ -332,19 +332,6 @@ router.post('/', async (req, res) => {
     if (existingCurrent) {
       const savedVersion = await createNextInspectionVersion(existingCurrent, payload)
 
-      if (SERVICE_M8_API_KEY) {
-        try {
-          const serviceJobUuid = payload.job_uuid || (payload.jobNumber ? await findServiceM8JobByNumber(payload.jobNumber).then((job) => job?.uuid) : null)
-          if (serviceJobUuid) {
-            const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`
-            const inspectionLink = `${origin}/#/view/${savedVersion._id}`
-            await createServiceM8JobNote(serviceJobUuid, `Inspection details available at: ${inspectionLink}`)
-          }
-        } catch (integrationError) {
-          console.warn('ServiceM8 integration failed:', integrationError.message)
-        }
-      }
-
       return res.status(201).json({
         success: true,
         message: 'Inspection saved as a new version for this job number',
@@ -360,18 +347,6 @@ router.post('/', async (req, res) => {
     })
       inspection.versionGroupId = inspection.job_uuid || inspection._id.toString()
     const saved = await inspection.save()
-    if (SERVICE_M8_API_KEY) {
-      try {
-        const serviceJobUuid = payload.job_uuid || (payload.jobNumber ? await findServiceM8JobByNumber(payload.jobNumber).then((job) => job?.uuid) : null)
-        if (serviceJobUuid) {
-          const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`
-            const inspectionLink = `${origin}/#/view/${saved.job_uuid || serviceJobUuid}`
-          await createServiceM8JobNote(serviceJobUuid, `Inspection details available at: ${inspectionLink}`)
-        }
-      } catch (integrationError) {
-        console.warn('ServiceM8 integration failed:', integrationError.message)
-      }
-    }
 
     res.status(201).json({
       success: true,
