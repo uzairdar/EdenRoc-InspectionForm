@@ -79,6 +79,29 @@ const buildServiceM8FilterUrl = (basePath, filterValue) => {
   return `${basePath}?${params.toString()}`
 }
 
+const isObjectIdLike = (value) => /^[0-9a-fA-F]{24}$/.test(String(value || '').trim())
+
+const findInspectionByIdentifier = async (identifier) => {
+  const lookup = String(identifier || '').trim()
+  if (!lookup) {
+    return null
+  }
+
+  const byJobUuid = await Inspection.findOne({ job_uuid: lookup })
+    .sort({ isCurrent: -1, versionNumber: -1, updatedAt: -1, createdAt: -1 })
+    .lean()
+
+  if (byJobUuid) {
+    return Inspection.findById(byJobUuid._id)
+  }
+
+  if (!isObjectIdLike(lookup)) {
+    return null
+  }
+
+  return Inspection.findById(lookup)
+}
+
 const findServiceM8JobContactsByJobUuid = async (jobUuid) => {
   const response = await serviceM8Fetch(buildServiceM8FilterUrl('/jobcontact.json', `job_uuid eq '${jobUuid}'`))
   let data
@@ -149,6 +172,49 @@ const findServiceM8JobByNumber = async (jobNumber) => {
   return job
 }
 
+const findServiceM8JobByUuid = async (jobUuid) => {
+  const response = await serviceM8Fetch(buildServiceM8FilterUrl('/job.json', `uuid eq '${jobUuid}'`))
+  let data
+  try {
+    data = await response.json()
+  } catch (err) {
+    const text = await response.text()
+    console.warn('ServiceM8 UUID lookup non-JSON response:', text)
+    if (!response.ok) {
+      throw new Error(text || 'ServiceM8 job lookup failed')
+    }
+    return null
+  }
+
+  if (!response.ok) {
+    const serverMessage = data && (data.message || data.error || data.error_description)
+    const authMessage = response.status === 401 ? 'ServiceM8 authorization failed' : 'ServiceM8 job lookup failed'
+    const err = new Error(`${authMessage}${serverMessage ? `: ${serverMessage}` : ''}`)
+    err.status = response.status
+    throw err
+  }
+
+  const job = Array.isArray(data) ? data[0] || null : data || null
+  if (!job) {
+    return null
+  }
+
+  const hasContactData = Boolean(job.contact || (Array.isArray(job.jobContacts) && job.jobContacts.length > 0))
+  if (job.uuid && !hasContactData) {
+    try {
+      const contacts = await findServiceM8JobContactsByJobUuid(job.uuid)
+      if (contacts.length > 0) {
+        job.jobContacts = contacts
+        job.contact = contacts[0]
+      }
+    } catch (contactError) {
+      console.warn('ServiceM8 job contact fetch failed:', contactError.message)
+    }
+  }
+
+  return job
+}
+
 const createServiceM8JobNote = async (jobId, noteText) => {
   const body = JSON.stringify({
     related_object: 'job',
@@ -184,6 +250,7 @@ const normalizeInspectionPayload = (body) => {
   delete payload.centreDtc
   delete payload.rhsDtc
   payload.jobNumber = String(payload.jobNumber || '').trim()
+  payload.job_uuid = String(payload.job_uuid || '').trim()
 
   return payload
 }
@@ -201,14 +268,14 @@ const buildVersionHistory = async (inspection) => {
     ],
   })
     .sort({ versionNumber: -1, updatedAt: -1 })
-    .select('_id jobNumber versionNumber isCurrent createdAt updatedAt jobStatus staffName customerName')
+    .select('_id jobNumber job_uuid versionNumber isCurrent createdAt updatedAt jobStatus staffName customerName')
     .lean()
 
   return versions
 }
 
 const createNextInspectionVersion = async (baseInspection, payload) => {
-  const versionGroupId = baseInspection.versionGroupId || baseInspection._id.toString()
+  const versionGroupId = baseInspection.versionGroupId || baseInspection.job_uuid || baseInspection._id.toString()
   const latestVersion = await Inspection.findOne({ versionGroupId }).sort({ versionNumber: -1 }).lean()
   const nextVersionNumber = (latestVersion?.versionNumber || baseInspection.versionNumber || 1) + 1
 
@@ -291,14 +358,14 @@ router.post('/', async (req, res) => {
       previousVersionId: null,
       isCurrent: true,
     })
-    inspection.versionGroupId = inspection._id.toString()
+      inspection.versionGroupId = inspection.job_uuid || inspection._id.toString()
     const saved = await inspection.save()
     if (SERVICE_M8_API_KEY) {
       try {
         const serviceJobUuid = payload.job_uuid || (payload.jobNumber ? await findServiceM8JobByNumber(payload.jobNumber).then((job) => job?.uuid) : null)
         if (serviceJobUuid) {
           const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`
-          const inspectionLink = `${origin}/#/view/${saved._id}`
+            const inspectionLink = `${origin}/#/view/${saved.job_uuid || serviceJobUuid}`
           await createServiceM8JobNote(serviceJobUuid, `Inspection details available at: ${inspectionLink}`)
         }
       } catch (integrationError) {
@@ -326,7 +393,17 @@ router.get('/', async (req, res) => {
     const inspections = await Inspection.aggregate([
       {
         $match: {
-          jobNumber: { $exists: true, $ne: '' },
+          $or: [
+            { job_uuid: { $exists: true, $ne: '' } },
+            { jobNumber: { $exists: true, $ne: '' } },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          groupKey: {
+            $ifNull: ['$job_uuid', { $ifNull: ['$versionGroupId', '$jobNumber'] }],
+          },
         },
       },
       {
@@ -339,7 +416,7 @@ router.get('/', async (req, res) => {
       },
       {
         $group: {
-          _id: '$jobNumber',
+          _id: '$groupKey',
           doc: { $first: '$$ROOT' },
         },
       },
@@ -426,10 +503,41 @@ router.get('/servicem8/job/:jobNumber', async (req, res) => {
   }
 })
 
+// GET - Lookup a ServiceM8 job by job UUID
+router.get('/servicem8/job-uuid/:jobUuid', async (req, res) => {
+  if (!SERVICE_M8_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      message: 'ServiceM8 API key is not configured',
+    })
+  }
+
+  try {
+    const job = await findServiceM8JobByUuid(req.params.jobUuid)
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'ServiceM8 job not found',
+      })
+    }
+    res.status(200).json({
+      success: true,
+      data: job,
+    })
+  } catch (error) {
+    const status = error.status || 400
+    res.status(status).json({
+      success: false,
+      message: error.message || 'ServiceM8 lookup failed',
+      error: error.message || 'ServiceM8 lookup failed',
+    })
+  }
+})
+
 // GET - Fetch a single inspection by ID
 router.get('/:id', async (req, res) => {
   try {
-    const inspection = await Inspection.findById(req.params.id)
+    const inspection = await findInspectionByIdentifier(req.params.id)
     if (!inspection) {
       return res.status(404).json({
         success: false,
@@ -464,7 +572,7 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    const inspection = await Inspection.findById(req.params.id)
+    const inspection = await findInspectionByIdentifier(req.params.id)
     if (!inspection) {
       return res.status(404).json({
         success: false,
@@ -491,7 +599,7 @@ router.put('/:id', async (req, res) => {
 // DELETE - Delete an inspection record
 router.delete('/:id', async (req, res) => {
   try {
-    const inspection = await Inspection.findById(req.params.id)
+    const inspection = await findInspectionByIdentifier(req.params.id)
     if (!inspection) {
       return res.status(404).json({
         success: false,
@@ -499,7 +607,7 @@ router.delete('/:id', async (req, res) => {
       })
     }
 
-    const versionGroupId = inspection.versionGroupId || inspection._id.toString()
+    const versionGroupId = inspection.versionGroupId || inspection.job_uuid || inspection._id.toString()
     const deleteResult = await Inspection.deleteMany({ versionGroupId })
 
     // Backward compatibility: if no grouped records were found, delete the selected record directly.

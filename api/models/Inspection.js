@@ -120,6 +120,13 @@ const inspectionSchema = new mongoose.Schema(
     windowNotes: String,
     flashingNotes: String,
 
+    // Customer sign-off
+    customerReviewed: {
+      type: Boolean,
+      default: false,
+    },
+    customerSignature: String,
+
     // Manufacturer specific details (flexible schema)
     manufacturerDetails: mongoose.Schema.Types.Mixed,
   },

@@ -37,6 +37,7 @@ import {
 } from './formConfig'
 import FormCard from './components/FormCard'
 import FormField from './components/FormField'
+import SignatureField from './components/SignatureField'
 
 const initialForm = {
   customerName: '',
@@ -94,6 +95,8 @@ const initialForm = {
   installerNotes: '',
   lightsMoved: 'No',
   chainDrive: 'No',
+  customerReviewed: false,
+  customerSignature: '',
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -111,6 +114,7 @@ function App() {
   const [serviceM8Loading, setServiceM8Loading] = useState(false)
   const [serviceM8Error, setServiceM8Error] = useState(null)
   const [versionHistory, setVersionHistory] = useState([])
+  const [inspectionSource, setInspectionSource] = useState(null)
   const submitLockRef = useRef(false)
 
   const navigateToHash = (hash) => {
@@ -151,6 +155,7 @@ function App() {
       setVersionHistory([])
       setSuccessMessage(null)
       setSubmitted(false)
+      setInspectionSource(null)
     }
 
     parseHash()
@@ -165,10 +170,38 @@ function App() {
       return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
     }
 
+    const isUuidLike = (value) =>
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(value || '').trim())
+
+    const applyServiceM8JobToForm = (job) => {
+      const mapped = mapServiceM8ToForm(job)
+      setFormData((prev) => ({
+        ...prev,
+        ...mapped,
+        job_uuid: mapped.job_uuid || prev.job_uuid,
+      }))
+      setManufacturerDetails({})
+      setVersionHistory([])
+      setInspectionSource('servicem8')
+      setSuccessMessage('Loaded job details from ServiceM8.')
+      setSubmitted(false)
+    }
+
+    const fetchServiceM8JobByUuid = async (jobUuid) => {
+      if (!jobUuid) return null
+      const response = await fetch(`${API_BASE_URL}/inspections/servicem8/job-uuid/${encodeURIComponent(jobUuid)}`)
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'ServiceM8 lookup failed')
+      }
+      return result.data
+    }
+
     const loadInspection = async (id) => {
       if (!id) return
       setLoading(true)
       setError(null)
+      setServiceM8Error(null)
       try {
         const response = await fetch(`${API_BASE_URL}/inspections/${id}`)
         const result = await response.json()
@@ -183,18 +216,76 @@ function App() {
         })
         setVersionHistory(result.versions || (result.data ? [result.data] : []))
         setManufacturerDetails(result.data.manufacturerDetails || {})
+        setInspectionSource('database')
         setSuccessMessage(null)
         setSubmitted(false)
       } catch (err) {
-        setError(err.message || 'Failed to load inspection')
+        throw err
       } finally {
         setLoading(false)
       }
     }
 
-    if ((isEditMode || isViewMode) && editInspectionId) {
-      loadInspection(editInspectionId)
+    const loadByRoute = async () => {
+      if (!((isEditMode || isViewMode) && editInspectionId)) {
+        return
+      }
+
+      const uuidLike = isUuidLike(editInspectionId)
+
+      if (uuidLike) {
+        setLoading(true)
+        setError(null)
+        setServiceM8Error(null)
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/inspections/${editInspectionId}`)
+          const result = await response.json()
+
+          if (response.ok && result.success) {
+            const { _id, __v, createdAt, updatedAt, ...inspectionData } = result.data || {}
+            setFormData({
+              ...initialForm,
+              ...inspectionData,
+              date: normalizeDate(inspectionData.date),
+            })
+            setVersionHistory(result.versions || (result.data ? [result.data] : []))
+            setManufacturerDetails(result.data.manufacturerDetails || {})
+            setInspectionSource('database')
+            setSuccessMessage(null)
+            setSubmitted(false)
+            return
+          }
+
+          if (response.status !== 404) {
+            throw new Error(result.message || 'Unable to load inspection')
+          }
+
+          const serviceJob = await fetchServiceM8JobByUuid(editInspectionId)
+          if (serviceJob) {
+            applyServiceM8JobToForm(serviceJob)
+            return
+          }
+
+          setError('No inspection record or ServiceM8 job was found for this UUID.')
+        } catch (err) {
+          setError(err.message || 'Failed to load inspection')
+        } finally {
+          setLoading(false)
+        }
+
+        return
+      }
+
+      try {
+        await loadInspection(editInspectionId)
+      } catch (err) {
+        setError(err.message || 'Failed to load inspection')
+      }
     }
+
+    loadByRoute()
+    return undefined
   }, [editInspectionId, isEditMode, isViewMode])
 
   const handleChange = (event) => {
@@ -263,6 +354,18 @@ function App() {
       return
     }
 
+    if (!formData.customerReviewed) {
+      setError('Please confirm the customer has reviewed all details before submitting.')
+      setSuccessMessage(null)
+      return
+    }
+
+    if (!formData.customerSignature) {
+      setError('Customer signature is required before submitting the form.')
+      setSuccessMessage(null)
+      return
+    }
+
     submitLockRef.current = true
     setLoading(true)
     setError(null)
@@ -275,10 +378,11 @@ function App() {
         manufacturerDetails,
       }
 
-      const url = isEditMode && editInspectionId
+      const shouldUpdateExistingRecord = isEditMode && editInspectionId && inspectionSource === 'database'
+      const url = shouldUpdateExistingRecord
         ? `${API_BASE_URL}/inspections/${editInspectionId}`
         : `${API_BASE_URL}/inspections`
-      const method = isEditMode && editInspectionId ? 'PUT' : 'POST'
+      const method = shouldUpdateExistingRecord ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
         method,
@@ -296,7 +400,7 @@ function App() {
       const result = await response.json()
       console.log('✅ Form submitted successfully:', result)
       setSubmitted(true)
-      setSuccessMessage(isEditMode ? 'Inspection record updated successfully!' : 'Inspection record saved successfully!')
+      setSuccessMessage(shouldUpdateExistingRecord ? 'Inspection record updated successfully!' : 'Inspection record saved successfully!')
       navigateToHash('#/')
     } catch (err) {
       console.error('❌ Error submitting form:', err)
@@ -318,7 +422,9 @@ function App() {
   const isCustomSelected = (fieldName) => String(manufacturerDetails[fieldName] || '').toLowerCase() === 'custom'
 
   const getCustomValueKey = (fieldName) => `${fieldName}CustomValue`
-  const activeVersion = versionHistory.find((version) => version._id === editInspectionId) || null
+  const activeVersion = versionHistory.find((version) => version._id === editInspectionId || version.job_uuid === editInspectionId) || null
+  const showEditInspectionAction = isViewMode && Boolean(editInspectionId)
+  const showDeleteInspectionAction = isViewMode && inspectionSource === 'database' && Boolean(editInspectionId)
 
   const openVersion = (versionId, mode = 'view') => {
     if (!versionId) return
@@ -531,25 +637,25 @@ function App() {
           <button type="button" className="modal-secondary" onClick={goBackToDashboard}>
             Back to dashboard
           </button>
-          {isViewMode ? (
-            <>
-              <button
-                type="button"
-                className="form-submit"
-                onClick={() => navigateToHash(`#/edit/${editInspectionId}`)}
-                disabled={loading}
-              >
-                Edit inspection
-              </button>
-              <button
-                type="button"
-                className="modal-delete"
-                onClick={handleDeleteInspection}
-                disabled={loading}
-              >
-                Delete inspection
-              </button>
-            </>
+          {showEditInspectionAction ? (
+            <button
+              type="button"
+              className="form-submit"
+              onClick={() => navigateToHash(`#/edit/${editInspectionId}`)}
+              disabled={loading}
+            >
+              {inspectionSource === 'servicem8' ? 'Edit details' : 'Edit inspection'}
+            </button>
+          ) : null}
+          {showDeleteInspectionAction ? (
+            <button
+              type="button"
+              className="modal-delete"
+              onClick={handleDeleteInspection}
+              disabled={loading}
+            >
+              Delete inspection
+            </button>
           ) : null}
         </div>
       </header>
@@ -874,6 +980,39 @@ function App() {
                 disabled={isReadOnly}
               />
             ))}
+          </div>
+        </FormCard>
+
+        <FormCard
+          title="Customer Review & Signature"
+          subtitle="Please ask the customer to review all details and sign before final submission."
+        >
+          <div className="signature-block">
+            <label className="review-checkbox">
+              <input
+                type="checkbox"
+                checked={Boolean(formData.customerReviewed)}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    customerReviewed: event.target.checked,
+                  }))
+                }
+                disabled={isReadOnly}
+              />
+              <span>I confirm the customer has reviewed and approved the details above.</span>
+            </label>
+
+            <SignatureField
+              value={formData.customerSignature || ''}
+              onChange={(signatureData) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  customerSignature: signatureData,
+                }))
+              }
+              disabled={isReadOnly}
+            />
           </div>
         </FormCard>
 

@@ -5,6 +5,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const searchableKeys = ['jobNumber', 'customerName', 'staffName', 'email']
 const PAGE_SIZE = 6
 
+const getInspectionIdentifier = (inspection) => inspection?.job_uuid || inspection?._id
+
 export default function Dashboard() {
   const [inspections, setInspections] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -74,12 +76,16 @@ export default function Dashboard() {
 
   const viewInspection = (inspection) => {
     if (!inspection) return
-    navigateToHash(`#/view/${inspection._id}`)
+    const identifier = getInspectionIdentifier(inspection)
+    if (!identifier) return
+    navigateToHash(`#/view/${identifier}`)
   }
 
   const editInspection = (inspection) => {
     if (!inspection) return
-    navigateToHash(`#/edit/${inspection._id}`)
+    const identifier = getInspectionIdentifier(inspection)
+    if (!identifier) return
+    navigateToHash(`#/edit/${identifier}`)
   }
 
   const removeInspection = async (inspection) => {
@@ -87,17 +93,23 @@ export default function Dashboard() {
     const confirmed = window.confirm(`Delete job ${inspection.jobNumber || inspection.customerName}? This cannot be undone.`)
     if (!confirmed) return
 
+    const identifier = getInspectionIdentifier(inspection)
+    if (!identifier) {
+      setError('Unable to delete this inspection because it does not have a job UUID or record id.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${API_BASE_URL}/inspections/${inspection._id}`, {
+      const response = await fetch(`${API_BASE_URL}/inspections/${identifier}`, {
         method: 'DELETE',
       })
       const result = await response.json()
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Unable to delete inspection')
       }
-      setInspections((prev) => prev.filter((item) => item._id !== inspection._id))
+      setInspections((prev) => prev.filter((item) => getInspectionIdentifier(item) !== identifier))
     } catch (err) {
       setError(err.message || 'Failed to delete inspection')
     } finally {
