@@ -37,6 +37,7 @@ import {
 } from './formConfig'
 import FormCard from './components/FormCard'
 import FormField from './components/FormField'
+import Loader from './components/Loader'
 import SignatureField from './components/SignatureField'
 
 const initialForm = {
@@ -116,6 +117,27 @@ function App() {
   const [versionHistory, setVersionHistory] = useState([])
   const [inspectionSource, setInspectionSource] = useState(null)
   const submitLockRef = useRef(false)
+  const isBusy = loading || serviceM8Loading
+
+  const loaderTitle = serviceM8Loading
+    ? 'Connecting to ServiceM8'
+    : loading
+      ? isEditMode
+        ? 'Saving inspection'
+        : editInspectionId
+          ? 'Loading inspection'
+          : 'Working'
+      : 'Working'
+
+  const loaderDescription = serviceM8Loading
+    ? 'Fetching job details and contact data.'
+    : loading
+      ? isEditMode
+        ? 'Please stay on this page while the record is being updated.'
+        : editInspectionId
+          ? 'Loading inspection data and version history.'
+          : 'Please wait while the request completes.'
+      : 'Please wait while the request completes.'
 
   const navigateToHash = (hash) => {
     window.history.pushState(null, '', hash)
@@ -714,7 +736,7 @@ function App() {
                         onClick={fetchServiceM8Details}
                         disabled={serviceM8Loading}
                       >
-                        {serviceM8Loading ? 'Fetching…' : 'Fetch details'}
+                        {serviceM8Loading ? <Loader variant="button" title="Fetching" /> : 'Fetch details'}
                       </button>
                     ) : null}
                   </div>
@@ -1019,7 +1041,7 @@ function App() {
         {!isViewMode ? (
           <div className="form-actions">
             <button type="submit" className="form-submit" disabled={loading || !formData.jobNumber?.trim()}>
-              {loading ? 'Saving...' : 'Save inspection data'}
+              {loading ? <Loader variant="button" title="Saving" /> : 'Save inspection data'}
             </button>
           </div>
         ) : (
@@ -1041,6 +1063,14 @@ function App() {
           <h2>Success</h2>
           <p>{successMessage}</p>
         </section>
+      ) : null}
+
+      {isBusy ? (
+        <Loader
+          variant="overlay"
+          title={loaderTitle}
+          description={loaderDescription}
+        />
       ) : null}
 
       {submitted ? (

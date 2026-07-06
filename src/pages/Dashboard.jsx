@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import '../App.css'
+import Loader from '../components/Loader'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const searchableKeys = ['jobNumber', 'customerName', 'staffName', 'email']
@@ -178,7 +179,13 @@ export default function Dashboard() {
               />
             </div>
 
-            {loading && <p className="field-note">Loading inspections…</p>}
+            {loading ? (
+              <Loader
+                variant="panel"
+                title="Loading inspections"
+                description="Fetching the latest records from the database."
+              />
+            ) : null}
             {error && <p className="field-note" style={{ color: '#b91c1c' }}>{error}</p>}
             {!loading && filteredInspections.length === 0 && (
               <p className="field-note">No inspections match your search.</p>

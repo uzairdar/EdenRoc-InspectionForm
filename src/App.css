@@ -314,6 +314,128 @@
   font-size: 0.82rem;
 }
 
+.loader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #0f172a;
+}
+
+.loader--panel {
+  width: 100%;
+  padding: 18px 20px;
+  border: 1px solid #dbe3ee;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(240, 253, 250, 0.75), rgba(255, 255, 255, 0.95));
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.loader--overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.loader--overlay .loader-copy {
+  color: #ffffff;
+}
+
+.loader--overlay .loader-copy span {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.loader--button {
+  gap: 10px;
+  color: inherit;
+}
+
+.loader--button .loader-copy {
+  display: flex;
+  align-items: center;
+}
+
+.loader--button .loader-copy strong,
+.loader--button .loader-copy span {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.loader--button .loader-copy span {
+  display: none;
+}
+
+.loader--button .loader-visual {
+  width: 18px;
+  height: 18px;
+}
+
+.loader--button .loader-ring {
+  border-width: 2px;
+}
+
+.loader--button .loader-core {
+  inset: 5px;
+}
+
+.loader--compact {
+  gap: 10px;
+}
+
+.loader-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.loader-copy strong {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: inherit;
+}
+
+.loader-copy span {
+  color: #475569;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.loader-visual {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+}
+
+.loader-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid rgba(20, 184, 166, 0.12);
+  border-top-color: #14b8a6;
+  animation: loaderSpin 0.95s linear infinite;
+}
+
+.loader-ring--inner {
+  inset: 11px;
+  border-width: 3px;
+  border-color: rgba(251, 146, 60, 0.12);
+  border-top-color: #fb923c;
+  animation-duration: 1.15s;
+  animation-direction: reverse;
+}
+
+.loader-core {
+  position: absolute;
+  inset: 19px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e0f2f1 45%, #14b8a6 100%);
+  box-shadow: 0 0 0 8px rgba(20, 184, 166, 0.08);
+  animation: loaderPulse 1.4s ease-in-out infinite;
+}
+
 .field-hint {
   color: #64748b;
   font-size: 0.8rem;
@@ -801,6 +923,29 @@
 
   50% {
     transform: translateY(20px);
+  }
+}
+
+@keyframes loaderSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loaderPulse {
+  0%,
+  100% {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 8px rgba(20, 184, 166, 0.08);
+  }
+
+  50% {
+    transform: scale(1);
+    box-shadow: 0 0 0 12px rgba(251, 146, 60, 0.08);
   }
 }
 
