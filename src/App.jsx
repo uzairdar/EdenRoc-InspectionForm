@@ -60,6 +60,7 @@ const initialForm = {
   firstUp: '',
   second: '',
   third: '',
+  fourth: '',
   topPanel: '',
   windowStyle: '',
   centreLock: '',
@@ -447,6 +448,7 @@ function App() {
     { name: 'firstUp', label: '1st Up (mm)', type: 'number' },
     { name: 'second', label: '2nd (mm)', type: 'number' },
     { name: 'third', label: '3rd (mm)', type: 'number' },
+    { name: 'fourth', label: '4th (mm)', type: 'number' },
     { name: 'topPanel', label: 'Top Panel' },
   ]
 

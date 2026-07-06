@@ -52,6 +52,7 @@ const inspectionSchema = new mongoose.Schema(
     firstUp: Number,
     second: Number,
     third: Number,
+    fourth: Number,
     topPanel: String,
 
     // Additional Damage Details
