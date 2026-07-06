@@ -669,7 +669,7 @@ function App() {
               {inspectionSource === 'servicem8' ? 'Edit details' : 'Edit inspection'}
             </button>
           ) : null}
-          {showDeleteInspectionAction ? (
+          {/* {showDeleteInspectionAction ? (
             <button
               type="button"
               className="modal-delete"
@@ -678,7 +678,7 @@ function App() {
             >
               Delete inspection
             </button>
-          ) : null}
+          ) : null} */}
         </div>
       </header>
 

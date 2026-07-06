@@ -217,9 +217,9 @@ export default function Dashboard() {
                     <button type="button" className="form-submit" onClick={() => editInspection(inspection)}>
                       Edit
                     </button>
-                    <button type="button" className="modal-delete" onClick={() => removeInspection(inspection)}>
+                    {/* <button type="button" className="modal-delete" onClick={() => removeInspection(inspection)}>
                       Delete
-                    </button>
+                    </button> */}
                   </div>
                 </article>
               ))}
