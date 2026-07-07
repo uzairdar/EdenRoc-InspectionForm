@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import '../App.css'
 import Loader from '../components/Loader'
 import InspectionCustomerSection from '../components/InspectionCustomerSection'
-import InspectionJobSection from '../components/InspectionJobSection'
 import InspectionVersionHistorySection from '../components/InspectionVersionHistorySection'
 import InspectionDamageSection from '../components/InspectionDamageSection'
 import InspectionMaterialsSection from '../components/InspectionMaterialsSection'
@@ -400,17 +399,11 @@ export default function InspectionPage() {
       <form className="form-layout" onSubmit={handleSubmit}>
         <InspectionCustomerSection
           customerFields={customerFields}
-          formData={formData}
-          isReadOnly={isReadOnly}
-          handleChange={handleChange}
-          setFormData={setFormData}
-        />
-
-        <InspectionJobSection
           jobFields={jobFields}
           formData={formData}
           isReadOnly={isReadOnly}
           handleChange={handleChange}
+          setFormData={setFormData}
           fetchServiceM8Details={fetchServiceM8Details}
           serviceM8Loading={serviceM8Loading}
           serviceM8Error={serviceM8Error}

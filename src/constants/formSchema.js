@@ -1,4 +1,4 @@
-import { jobStatusOptions, yesNoOptions, materialManufacturers, manufacturerConfigs } from '../formConfig'
+import { yesNoOptions, materialManufacturers, manufacturerConfigs } from '../formConfig'
 
 export const initialForm = {
   customerName: '',
@@ -62,9 +62,7 @@ export const initialForm = {
 
 export const customerFields = [
   { name: 'customerName', label: 'Customer Name' },
-  { name: 'tenantName', label: 'Tenant Name' },
   { name: 'customerMobile', label: 'Customer Mobile', type: 'number', placeholder: 'e.g. 0412 345 678' },
-  { name: 'tenantMobile', label: 'Tenant Mobile', type: 'number', placeholder: 'e.g. 0412 345 678' },
   { name: 'email', label: 'Email', type: 'email', placeholder: 'contact@company.com' },
   { name: 'address', label: 'Address', type: 'input', rows: 3 },
 ]
@@ -73,7 +71,6 @@ export const jobFields = [
   { name: 'jobNumber', label: 'Job Number' },
   { name: 'date', label: 'Date', type: 'date' },
   { name: 'staffName', label: 'Staff Name' },
-  { name: 'jobStatus', label: 'Job Status', type: 'select', options: jobStatusOptions },
 ]
 
 export const damageFields = [
