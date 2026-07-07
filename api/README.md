@@ -1,116 +1,50 @@
 # EdenRoc Measurement App - Backend API
 
-MERN stack backend for the garage door inspection form application.
+Express + MongoDB backend for inspection record storage, versioning, and ServiceM8 lookup integration.
 
-## Setup Instructions
-
-### 1. Install Dependencies
+## Setup
 
 ```bash
 cd api
 npm install
 ```
 
-### 2. Environment Variables
+Create `api/.env` with:
 
-The `.env` file is already configured with the MongoDB connection string. No additional setup required.
-
-```
-MONGODB_URI=mongodb+srv://uzairdar01_db_user:Iy4f7YBAqVNdGR5A@edenrocform.hl7yjac.mongodb.net/?appName=EdenRocForm
+```env
+MONGODB_URI=your_mongodb_connection_string
 PORT=5000
 NODE_ENV=development
+SERVICEM8_API_KEY=your_servicem8_api_key
 ```
 
-### 3. Start the Server
+Start server:
 
-**Development mode (with auto-restart):**
 ```bash
 npm run dev
 ```
 
-**Production mode:**
-```bash
-npm start
-```
-
-The server will start on `http://localhost:5000`
+API root: `http://localhost:5000/api`
 
 ## API Endpoints
 
-### Create Inspection Record
-- **POST** `/api/inspections`
-- Body: Form data object
-- Response: Saved inspection document
+### Inspection Records
+- `POST /api/inspections`: Create a new inspection or next version
+- `GET /api/inspections`: Get latest inspection per job group
+- `GET /api/inspections/:id`: Fetch by `job_uuid` or Mongo `_id`
+- `PUT /api/inspections/:id`: Create a new version from existing record
+- `DELETE /api/inspections/:id`: Delete all versions in the group
 
-### Get All Inspections
-- **GET** `/api/inspections`
-- Response: Array of all inspection records
+### ServiceM8
+- `GET /api/inspections/servicem8/test`: Validate API key
+- `GET /api/inspections/servicem8/job/:jobNumber`: Lookup by generated job number
+- `GET /api/inspections/servicem8/job-uuid/:jobUuid`: Lookup by ServiceM8 UUID
 
-### Get Single Inspection
-- **GET** `/api/inspections/:id`
-- Response: Single inspection document
+## Notes
+- Versioning is append-only. Updates generate new records.
+- Identifier routes support `job_uuid` first, then Mongo `_id` fallback.
+- Save operations no longer post links back to ServiceM8 notes.
 
-### Update Inspection
-- **PUT** `/api/inspections/:id`
-- Body: Updated fields
-- Response: Updated inspection document
-
-### Delete Inspection
-- **DELETE** `/api/inspections/:id`
-- Response: Deleted inspection document
-
-## Database Schema
-
-The Inspection schema includes all form fields:
-- Customer details (name, contact, address)
-- Job details (number, date, staff, status)
-- Damage details (door type, brand, style, measurements)
-- Additional damage notes (motor, pelmet, jambs, etc.)
-- Measurements (opening, clearance, height survey)
-- Table measurements (FTD/DTC values)
-- Material details (manufacturer, deposit, confirmation)
-- Special checks (G4 doors, lights, chain drive)
-
-All fields are optional and stored as mixed types for flexibility.
-
-## Frontend Configuration
-
-Update `src/App.jsx` or set the `VITE_API_URL` environment variable:
-
-```javascript
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-```
-
-For production, set:
-```bash
-VITE_API_URL=https://your-api-domain.com/api
-```
-
-## Testing
-
-You can test the API using:
-- **Postman** or **Insomnia**
-- **cURL** command line
-- **Frontend form submission**
-
-Example cURL:
-```bash
-curl -X POST http://localhost:5000/api/inspections \
-  -H "Content-Type: application/json" \
-  -d '{"customerName":"John Doe","email":"john@example.com"}'
-```
-
-## Troubleshooting
-
-### MongoDB Connection Error
-- Check internet connection
-- Verify credentials in `.env`
-- Ensure IP is whitelisted in MongoDB Atlas
-
-### CORS Error
-- The backend has CORS enabled for all origins in development
-- For production, configure specific allowed origins
-
-### Port Already in Use
-- Change `PORT` in `.env` file
-- Or kill process using port 5000: `lsof -ti:5000 | xargs kill -9`
+## Security
+- Never commit `.env` files.
+- Rotate any credentials that were previously exposed.

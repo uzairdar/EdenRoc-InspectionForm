@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import '../App.css'
 import Loader from '../components/Loader'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-const searchableKeys = ['jobNumber', 'customerName', 'staffName', 'email']
-const PAGE_SIZE = 6
-
-const getInspectionIdentifier = (inspection) => inspection?.job_uuid || inspection?._id
+import { SEARCHABLE_KEYS, PAGE_SIZE } from '../constants/dashboard'
+import { navigateToHash } from '../utils/navigation'
+import { getInspectionIdentifier } from '../utils/inspection'
+import { fetchInspections, deleteInspectionByIdentifier } from '../services/inspectionsApi'
 
 export default function Dashboard() {
   const [inspections, setInspections] = useState([])
@@ -23,12 +21,8 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${API_BASE_URL}/inspections`)
-      const result = await response.json()
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Unable to load inspections')
-      }
-      setInspections(result.data || [])
+      const data = await fetchInspections()
+      setInspections(data)
     } catch (err) {
       setError(err.message || 'Failed to fetch inspections')
     } finally {
@@ -40,7 +34,7 @@ export default function Dashboard() {
     if (!searchTerm.trim()) return inspections
     const term = searchTerm.toLowerCase()
     return inspections.filter((inspection) =>
-      searchableKeys.some((key) => String(inspection[key] || '').toLowerCase().includes(term))
+      SEARCHABLE_KEYS.some((key) => String(inspection[key] || '').toLowerCase().includes(term))
     )
   }, [inspections, searchTerm])
 
@@ -60,11 +54,6 @@ export default function Dashboard() {
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages])
-
-  const navigateToHash = (hash) => {
-    window.history.pushState(null, '', hash)
-    window.dispatchEvent(new Event('hashchange'))
-  }
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value)
@@ -103,24 +92,13 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${API_BASE_URL}/inspections/${identifier}`, {
-        method: 'DELETE',
-      })
-      const result = await response.json()
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Unable to delete inspection')
-      }
+      await deleteInspectionByIdentifier(identifier)
       setInspections((prev) => prev.filter((item) => getInspectionIdentifier(item) !== identifier))
     } catch (err) {
       setError(err.message || 'Failed to delete inspection')
     } finally {
       setLoading(false)
     }
-  }
-
-  const displayValue = (value) => {
-    if (value === undefined || value === null || value === '') return '—'
-    return String(value)
   }
 
   const getStatusClass = (status) => {
