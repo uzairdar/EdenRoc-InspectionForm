@@ -48,6 +48,8 @@ export default function InspectionPage() {
   const [serviceM8Error, setServiceM8Error] = useState(null)
   const [versionHistory, setVersionHistory] = useState([])
   const [inspectionSource, setInspectionSource] = useState(null)
+  const [verifiedServiceM8JobNumber, setVerifiedServiceM8JobNumber] = useState('')
+  const [loadedJobNumber, setLoadedJobNumber] = useState('')
   const submitLockRef = useRef(false)
   const isBusy = loading || serviceM8Loading
 
@@ -105,6 +107,8 @@ export default function InspectionPage() {
       setSuccessMessage(null)
       setSubmitted(false)
       setInspectionSource(null)
+      setVerifiedServiceM8JobNumber('')
+      setLoadedJobNumber('')
     }
 
     parseHash()
@@ -115,6 +119,7 @@ export default function InspectionPage() {
   useEffect(() => {
     const applyServiceM8JobToForm = (job) => {
       const mapped = mapServiceM8ToForm(job)
+      const normalizedMappedJobNumber = String(mapped.jobNumber || '').trim()
       setFormData((prev) => ({
         ...prev,
         ...mapped,
@@ -123,6 +128,8 @@ export default function InspectionPage() {
       setManufacturerDetails({})
       setVersionHistory([])
       setInspectionSource('servicem8')
+      setVerifiedServiceM8JobNumber(normalizedMappedJobNumber)
+      setLoadedJobNumber(normalizedMappedJobNumber)
       setSuccessMessage('Loaded job details from ServiceM8.')
       setSubmitted(false)
     }
@@ -143,6 +150,8 @@ export default function InspectionPage() {
         setVersionHistory(result.versions || (result.data ? [result.data] : []))
         setManufacturerDetails(result.data.manufacturerDetails || {})
         setInspectionSource('database')
+        setLoadedJobNumber(String(inspectionData.jobNumber || '').trim())
+        setVerifiedServiceM8JobNumber('')
         setSuccessMessage(null)
         setSubmitted(false)
       } catch (err) {
@@ -176,6 +185,8 @@ export default function InspectionPage() {
             setVersionHistory(result.versions || (result.data ? [result.data] : []))
             setManufacturerDetails(result.data.manufacturerDetails || {})
             setInspectionSource('database')
+            setLoadedJobNumber(String(inspectionData.jobNumber || '').trim())
+            setVerifiedServiceM8JobNumber('')
             setSuccessMessage(null)
             setSubmitted(false)
             return
@@ -224,6 +235,12 @@ export default function InspectionPage() {
   const handleChange = (event) => {
     if (isViewMode) return
     const { name, value } = event.target
+    if (name === 'jobNumber') {
+      const normalizedValue = String(value || '').trim()
+      if (normalizedValue !== verifiedServiceM8JobNumber) {
+        setVerifiedServiceM8JobNumber('')
+      }
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -259,6 +276,16 @@ export default function InspectionPage() {
     const normalizedJobNumber = (formData.jobNumber || '').trim()
     if (!normalizedJobNumber) {
       setError('Job Number is required before saving inspection data.')
+      setSuccessMessage(null)
+      return
+    }
+
+    const isDatabaseEdit = isEditMode && inspectionSource === 'database'
+    const requiresServiceM8Verification = !isDatabaseEdit || normalizedJobNumber !== loadedJobNumber
+    const isServiceM8Verified = normalizedJobNumber === verifiedServiceM8JobNumber
+
+    if (requiresServiceM8Verification && !isServiceM8Verified) {
+      setError('Please fetch details and confirm a valid ServiceM8 job number before saving.')
       setSuccessMessage(null)
       return
     }
@@ -336,6 +363,7 @@ export default function InspectionPage() {
   const fetchServiceM8Details = async () => {
     if (!formData.jobNumber?.trim()) {
       setServiceM8Error('Please enter a job number first.')
+      setVerifiedServiceM8JobNumber('')
       return
     }
 
@@ -343,22 +371,35 @@ export default function InspectionPage() {
     setServiceM8Error(null)
 
     try {
-      const result = await fetchServiceM8JobByNumber(formData.jobNumber)
+      const normalizedInputJobNumber = String(formData.jobNumber || '').trim()
+      const result = await fetchServiceM8JobByNumber(normalizedInputJobNumber)
       if (!result?.data) {
         setServiceM8Error('No ServiceM8 job found for this job number.')
+        setVerifiedServiceM8JobNumber('')
         return
       }
       const mapped = mapServiceM8ToForm(result.data)
+      const normalizedMappedJobNumber = String(mapped.jobNumber || normalizedInputJobNumber).trim()
       setFormData((prev) => ({
         ...prev,
         ...mapped,
       }))
+      setInspectionSource('servicem8')
+      setVerifiedServiceM8JobNumber(normalizedMappedJobNumber)
+      setLoadedJobNumber(normalizedMappedJobNumber)
     } catch (err) {
       setServiceM8Error(err.message || 'ServiceM8 lookup failed')
+      setVerifiedServiceM8JobNumber('')
     } finally {
       setServiceM8Loading(false)
     }
   }
+
+  const normalizedCurrentJobNumber = String(formData.jobNumber || '').trim()
+  const isDatabaseEdit = isEditMode && inspectionSource === 'database'
+  const requiresServiceM8Verification = !isDatabaseEdit || normalizedCurrentJobNumber !== loadedJobNumber
+  const isServiceM8Verified = normalizedCurrentJobNumber === verifiedServiceM8JobNumber
+  const canSubmitInspection = Boolean(normalizedCurrentJobNumber) && (!requiresServiceM8Verification || isServiceM8Verified)
 
   return (
     <main className="app-shell">
@@ -452,7 +493,7 @@ export default function InspectionPage() {
 
         {!isViewMode ? (
           <div className="form-actions">
-            <button type="submit" className="form-submit" disabled={loading || !formData.jobNumber?.trim()}>
+            <button type="submit" className="form-submit" disabled={loading || !canSubmitInspection}>
               {loading ? <Loader variant="button" title="Saving" /> : 'Save inspection data'}
             </button>
           </div>
