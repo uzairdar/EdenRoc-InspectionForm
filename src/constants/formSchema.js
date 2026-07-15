@@ -46,8 +46,12 @@ export const initialForm = {
   headroom: '',
   heightLHS: '',
   heightRHS: '',
+  lhsMidFtd: '',
+  rhsMidFtd: '',
   lhsDth: '',
+  lhsMidDth: '',
   centreDth: '',
+  rhsMidDth: '',
   rhsDth: '',
   depositPaid: 'No',
   customerConfirmed: 'No',
@@ -130,10 +134,14 @@ export const heightSurveyFields = [
 
 export const tableFields = [
   { name: 'lhsFtd', label: 'LHS FTD', type: 'number' },
+  { name: 'lhsMidFtd', label: 'LHS-MID FTD', type: 'number' },
   { name: 'centreFtd', label: 'Centre FTD', type: 'number' },
+  { name: 'rhsMidFtd', label: 'RHS-MID FTD', type: 'number' },
   { name: 'rhsFtd', label: 'RHS FTD', type: 'number' },
   { name: 'lhsDth', label: 'LHS DTH', type: 'number' },
+  { name: 'lhsMidDth', label: 'LHS-MID DTH', type: 'number' },
   { name: 'centreDth', label: 'Centre DTH', type: 'number' },
+  { name: 'rhsMidDth', label: 'RHS-MID DTH', type: 'number' },
   { name: 'rhsDth', label: 'RHS DTH', type: 'number' },
 ]
 

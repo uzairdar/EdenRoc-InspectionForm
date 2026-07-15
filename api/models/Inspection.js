@@ -85,10 +85,14 @@ const inspectionSchema = new mongoose.Schema(
 
     // Table Fields (FTD/DTC measurements)
     lhsFtd: Number,
-    lhsDth: Number,
+    lhsMidFtd: Number,
     centreFtd: Number,
-    centreDth: Number,
+    rhsMidFtd: Number,
     rhsFtd: Number,
+    lhsDth: Number,
+    lhsMidDth: Number,
+    centreDth: Number,
+    rhsMidDth: Number,
     rhsDth: Number,
 
     // Material Details
