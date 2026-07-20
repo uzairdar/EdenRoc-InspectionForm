@@ -55,6 +55,7 @@ export const initialForm = {
   rhsMidDth: '',
   rhsDth: '',
   measurementSketch: '',
+  finalDoorSize: '',
   depositPaid: 'No',
   customerConfirmed: 'No',
   manufacturer: '',
@@ -152,6 +153,7 @@ export const materialFields = [
   { name: 'depositPaid', label: 'Deposit Paid', type: 'select', options: yesNoOptions },
   { name: 'customerConfirmed', label: 'Customer Confirmed', type: 'select', options: yesNoOptions },
   { name: 'manufacturer', label: 'Door Type / Manufacturer', type: 'select', options: materialManufacturers },
+  { name: 'finalDoorSize', label: 'Final Door Size' },
 ]
 
 export const g4Fields = [

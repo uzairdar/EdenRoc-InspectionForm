@@ -109,6 +109,7 @@ const inspectionSchema = new mongoose.Schema(
       default: 'No',
     },
     manufacturer: String,
+    finalDoorSize: String,
     windows: String,
     installerNotes: String,
     lightsMoved: {
