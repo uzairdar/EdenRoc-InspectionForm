@@ -67,6 +67,7 @@ const inspectionSchema = new mongoose.Schema(
     backClear: String,
     recess: String,
     accessProperty: String,
+    noOfStruts: Number,
     taper: String, // 'left' or 'right'
     vilo: Number,
 
@@ -94,6 +95,7 @@ const inspectionSchema = new mongoose.Schema(
     centreDth: Number,
     rhsMidDth: Number,
     rhsDth: Number,
+    measurementSketch: String,
 
     // Material Details
     depositPaid: {

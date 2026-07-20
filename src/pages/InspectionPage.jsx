@@ -467,6 +467,7 @@ export default function InspectionPage() {
           tableFields={tableFields}
           formData={formData}
           handleChange={handleChange}
+          setFormData={setFormData}
           isReadOnly={isReadOnly}
         />
 

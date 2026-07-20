@@ -35,6 +35,7 @@ export const initialForm = {
   backClear: '',
   recess: '',
   accessProperty: '',
+  noOfStruts: '',
   taper: '',
   vilo: '',
   windowNotes: '',
@@ -53,6 +54,7 @@ export const initialForm = {
   centreDth: '',
   rhsMidDth: '',
   rhsDth: '',
+  measurementSketch: '',
   depositPaid: 'No',
   customerConfirmed: 'No',
   manufacturer: '',
@@ -107,6 +109,7 @@ export const damageNotesFields = [
   { name: 'backClear', label: '3/2 Back Clear' },
   { name: 'recess', label: 'Recess' },
   { name: 'accessProperty', label: 'Access Property' },
+  { name: 'noOfStruts', label: 'No. of Struts', type: 'number' },
   {
     name: 'taper',
     label: 'Taper (mm)',

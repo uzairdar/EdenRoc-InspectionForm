@@ -1,5 +1,6 @@
 import FormCard from './FormCard'
 import FormField from './FormField'
+import MeasurementSketchField from './MeasurementSketchField'
 
 export default function InspectionDamageSection({
   damageFields,
@@ -11,6 +12,7 @@ export default function InspectionDamageSection({
   tableFields,
   formData,
   handleChange,
+  setFormData,
   isReadOnly,
 }) {
   return (
@@ -140,6 +142,20 @@ export default function InspectionDamageSection({
             />
           ))}
         </div>
+
+        <div className="section-subhead">
+          <h3>Drawing / layout sketch</h3>
+        </div>
+        <MeasurementSketchField
+          value={formData.measurementSketch || ''}
+          onChange={(sketchData) =>
+            setFormData((prev) => ({
+              ...prev,
+              measurementSketch: sketchData,
+            }))
+          }
+          disabled={isReadOnly}
+        />
       </FormCard>
     </>
   )

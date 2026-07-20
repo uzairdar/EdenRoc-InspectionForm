@@ -242,11 +242,54 @@
   cursor: crosshair;
 }
 
+.measurement-sketch-field {
+  margin-top: 6px;
+}
+
+.measurement-sketch-pad {
+  border: 1px solid #cfd8e6;
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+}
+
+.measurement-sketch-canvas {
+  height: 260px;
+}
+
 .signature-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.sketch-tool-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sketch-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 94px;
+}
+
+.sketch-tool-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.sketch-tool-btn.is-active {
+  border-color: #14b8a6;
+  color: #0f766e;
+  background: #f0fdfa;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
 }
 
 .field-label {
