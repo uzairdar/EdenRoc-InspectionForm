@@ -13,6 +13,9 @@ function FormField({
   disabled = false,
 }) {
   const id = `field-${name}`
+  const isYesNoSelect =
+    type === 'select' && options.length === 2 && options.includes('Yes') && options.includes('No')
+  const selectValue = type === 'select' && isYesNoSelect ? value || 'No' : value
 
   return (
     <div className={`form-field ${className}`}>
@@ -30,7 +33,7 @@ function FormField({
           disabled={disabled}
         />
       ) : type === 'select' ? (
-        <select id={id} name={name} value={value} onChange={onChange} disabled={disabled}>
+        <select id={id} name={name} value={selectValue} onChange={onChange} disabled={disabled}>
           <option value="">Choose...</option>
           {options.map((option) => (
             <option key={option} value={option}>

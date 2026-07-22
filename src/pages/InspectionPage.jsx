@@ -11,7 +11,7 @@ import {
   customerFields,
   jobFields,
   damageFields,
-  tapperFields,
+  taperFields,
   damageNotesFields,
   openingFields,
   clearanceFields,
@@ -23,6 +23,9 @@ import {
 } from '../constants/formSchema'
 import { navigateToHash } from '../utils/navigation'
 import { formatVersionStamp, normalizeDateInput } from '../utils/inspection'
+import { downloadCenturionRadOrderTemplate } from '../utils/centurionRadTemplate'
+import { downloadCenturionSectionalOrderTemplate } from '../utils/centurionSectionalTemplate'
+import { downloadSteelineOrderTemplate } from '../utils/steelineTemplate'
 import { mapServiceM8ToForm } from '../utils/servicem8Mapper'
 import {
   fetchInspectionByIdentifier,
@@ -33,6 +36,58 @@ import {
 
 const isUuidLike = (value) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(value || '').trim())
+
+const centurionRadDefaults = {
+  taperRequired: 'No',
+  keyedAlike: 'No',
+  oversizeWeatherSeal: 'No',
+  windLock: 'No',
+  steelWrapForTransport: 'No',
+}
+
+const centurionSectionalDefaults = {
+  taperRequired: 'No',
+  panelsOnly: 'No',
+  fitThermoGuardInsulation: 'No',
+  windStrutsOnAllPanels: 'No',
+  oversizeWeatherSeal: 'No',
+  steelWrapForTransport: 'No',
+}
+
+const steelineDefaults = {
+  keyedAlike: 'No',
+  keyedDifferent: 'No',
+  shootBolts: 'No',
+  taperVilo: 'No',
+  notched: 'No',
+  steelWrapForTransport: 'No',
+  packForTransport: 'No',
+}
+
+const applyManufacturerDefaults = (manufacturer, details = {}) => {
+  if (manufacturer === 'Centurion RAD') {
+    return {
+      ...centurionRadDefaults,
+      ...(details || {}),
+    }
+  }
+
+  if (manufacturer === 'Centurion Sectional') {
+    return {
+      ...centurionSectionalDefaults,
+      ...(details || {}),
+    }
+  }
+
+  if (manufacturer === 'Steeline Sectional' || manufacturer === 'Steeline RAD') {
+    return {
+      ...steelineDefaults,
+      ...(details || {}),
+    }
+  }
+
+  return details || {}
+}
 
 export default function InspectionPage() {
   const [formData, setFormData] = useState(initialForm)
@@ -46,6 +101,7 @@ export default function InspectionPage() {
   const [isViewMode, setIsViewMode] = useState(false)
   const [serviceM8Loading, setServiceM8Loading] = useState(false)
   const [serviceM8Error, setServiceM8Error] = useState(null)
+  const [templateLoading, setTemplateLoading] = useState(false)
   const [versionHistory, setVersionHistory] = useState([])
   const [inspectionSource, setInspectionSource] = useState(null)
   const [verifiedServiceM8JobNumber, setVerifiedServiceM8JobNumber] = useState('')
@@ -125,7 +181,7 @@ export default function InspectionPage() {
         ...mapped,
         job_uuid: mapped.job_uuid || prev.job_uuid,
       }))
-      setManufacturerDetails({})
+      setManufacturerDetails(applyManufacturerDefaults(mapped.manufacturer, {}))
       setVersionHistory([])
       setInspectionSource('servicem8')
       setVerifiedServiceM8JobNumber(normalizedMappedJobNumber)
@@ -148,7 +204,7 @@ export default function InspectionPage() {
           date: normalizeDateInput(inspectionData.date),
         })
         setVersionHistory(result.versions || (result.data ? [result.data] : []))
-        setManufacturerDetails(result.data.manufacturerDetails || {})
+        setManufacturerDetails(applyManufacturerDefaults(inspectionData.manufacturer, result.data.manufacturerDetails || {}))
         setInspectionSource('database')
         setLoadedJobNumber(String(inspectionData.jobNumber || '').trim())
         setVerifiedServiceM8JobNumber('')
@@ -183,7 +239,7 @@ export default function InspectionPage() {
               date: normalizeDateInput(inspectionData.date),
             })
             setVersionHistory(result.versions || (result.data ? [result.data] : []))
-            setManufacturerDetails(result.data.manufacturerDetails || {})
+            setManufacturerDetails(applyManufacturerDefaults(inspectionData.manufacturer, result.data.manufacturerDetails || {}))
             setInspectionSource('database')
             setLoadedJobNumber(String(inspectionData.jobNumber || '').trim())
             setVerifiedServiceM8JobNumber('')
@@ -248,7 +304,7 @@ export default function InspectionPage() {
     }))
 
     if (name === 'manufacturer') {
-      setManufacturerDetails({})
+      setManufacturerDetails(applyManufacturerDefaults(value, {}))
       setSubmitted(false)
     }
     setError(null)
@@ -354,6 +410,9 @@ export default function InspectionPage() {
       : null)
   const activeVersionId = activeVersion?._id || null
   const showEditInspectionAction = isViewMode && Boolean(editInspectionId)
+  const isCenturionRad = selectedManufacturer === 'Centurion RAD'
+  const isCenturionSectional = selectedManufacturer === 'Centurion Sectional'
+  const isSteeline = selectedManufacturer === 'Steeline Sectional' || selectedManufacturer === 'Steeline RAD'
 
   const openVersion = (versionId, mode = 'view') => {
     if (!versionId) return
@@ -401,6 +460,60 @@ export default function InspectionPage() {
   const isServiceM8Verified = normalizedCurrentJobNumber === verifiedServiceM8JobNumber
   const canSubmitInspection = Boolean(normalizedCurrentJobNumber) && (!requiresServiceM8Verification || isServiceM8Verified)
 
+  const handleDownloadCenturionRadTemplate = async () => {
+    if (!isCenturionRad) return
+
+    setTemplateLoading(true)
+    setError(null)
+
+    try {
+      await downloadCenturionRadOrderTemplate({
+        manufacturerDetails,
+        jobNumber: formData.jobNumber,
+      })
+    } catch (err) {
+      setError(err.message || 'Failed to prepare Centurion RAD template download.')
+    } finally {
+      setTemplateLoading(false)
+    }
+  }
+
+  const handleDownloadCenturionSectionalTemplate = async () => {
+    if (!isCenturionSectional) return
+
+    setTemplateLoading(true)
+    setError(null)
+
+    try {
+      await downloadCenturionSectionalOrderTemplate({
+        manufacturerDetails,
+        jobNumber: formData.jobNumber,
+      })
+    } catch (err) {
+      setError(err.message || 'Failed to prepare Centurion sectional template download.')
+    } finally {
+      setTemplateLoading(false)
+    }
+  }
+
+  const handleDownloadSteelineTemplate = async () => {
+    if (!isSteeline) return
+
+    setTemplateLoading(true)
+    setError(null)
+
+    try {
+      await downloadSteelineOrderTemplate({
+        manufacturerDetails,
+        jobNumber: formData.jobNumber,
+      })
+    } catch (err) {
+      setError(err.message || 'Failed to prepare Steeline template download.')
+    } finally {
+      setTemplateLoading(false)
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -421,6 +534,36 @@ export default function InspectionPage() {
           ) : null}
         </div>
         <div className="header-action-group">
+          {isCenturionRad ? (
+            <button
+              type="button"
+              className="modal-secondary"
+              onClick={handleDownloadCenturionRadTemplate}
+              disabled={templateLoading}
+            >
+              {templateLoading ? 'Preparing order template...' : 'Download Centurion RAD order'}
+            </button>
+          ) : null}
+          {isCenturionSectional ? (
+            <button
+              type="button"
+              className="modal-secondary"
+              onClick={handleDownloadCenturionSectionalTemplate}
+              disabled={templateLoading}
+            >
+              {templateLoading ? 'Preparing order template...' : 'Download Centurion Sectional order'}
+            </button>
+          ) : null}
+          {isSteeline ? (
+            <button
+              type="button"
+              className="modal-secondary"
+              onClick={handleDownloadSteelineTemplate}
+              disabled={templateLoading}
+            >
+              {templateLoading ? 'Preparing order template...' : 'Download Steeline order'}
+            </button>
+          ) : null}
           <button type="button" className="modal-secondary" onClick={goBackToDashboard}>
             Back to dashboard
           </button>
@@ -459,7 +602,7 @@ export default function InspectionPage() {
 
         <InspectionDamageSection
           damageFields={damageFields}
-          tapperFields={tapperFields}
+          taperFields={taperFields}
           damageNotesFields={damageNotesFields}
           openingFields={openingFields}
           clearanceFields={clearanceFields}

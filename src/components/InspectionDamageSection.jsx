@@ -4,7 +4,7 @@ import MeasurementSketchField from './MeasurementSketchField'
 
 export default function InspectionDamageSection({
   damageFields,
-  tapperFields,
+  taperFields,
   damageNotesFields,
   openingFields,
   clearanceFields,
@@ -31,7 +31,7 @@ export default function InspectionDamageSection({
         </div>
 
         <div className="form-grid compact-grid">
-          {tapperFields.map((field) => (
+          {taperFields.map((field) => (
             <FormField
               key={field.name}
               {...field}

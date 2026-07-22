@@ -1,5 +1,9 @@
 import FormCard from './FormCard'
 import FormField from './FormField'
+import CenturionRadTaperPanel from './CenturionRadTaperPanel'
+import SteelineViloTaperPanel from './SteelineViloTaperPanel'
+import { Fragment } from 'react'
+import { steelineWindowTypeOptions } from '../formConfig'
 
 export default function InspectionMaterialsSection({
   materialFields,
@@ -15,6 +19,14 @@ export default function InspectionMaterialsSection({
   isCustomSelected,
   getCustomValueKey,
 }) {
+  const isCenturionRad = selectedManufacturer === 'Centurion RAD'
+  const isCenturionSectional = selectedManufacturer === 'Centurion Sectional'
+  const centurionSectionalTaperRequired = manufacturerDetails.taperRequired || ''
+  const isSteeline = selectedManufacturer === 'Steeline Sectional' || selectedManufacturer === 'Steeline RAD'
+  const steelineStyle = manufacturerDetails.style || ''
+  const steelineWindowOptions = isSteeline ? steelineWindowTypeOptions[steelineStyle] || [] : []
+  const showSteelineViloTaperPanel = isSteeline && (manufacturerDetails.taperVilo === 'Yes' || manufacturerDetails.taperVilo === 'Y')
+
   return (
     <>
       <FormCard title="Materials Required for the Job" subtitle="New door - select manufacturer first to load options">
@@ -39,27 +51,65 @@ export default function InspectionMaterialsSection({
               {selectedConfig.map((field) => {
                 const customValueKey = getCustomValueKey(field.name)
                 const showCustomInput = hasCustomOption(field) && isCustomSelected(field.name)
+                const fieldValue = manufacturerDetails[field.name] || ''
+                const fieldOptions = field.name === 'windowType' ? steelineWindowOptions : field.options
+                const hideCenturionSectionalTaperHeights =
+                  isCenturionSectional &&
+                  (field.name === 'lhsHight' || field.name === 'rhsHight') &&
+                  centurionSectionalTaperRequired !== 'Yes' &&
+                  centurionSectionalTaperRequired !== 'Y'
+                const showTaperPanel =
+                  isCenturionRad &&
+                  field.name === 'taperRequired' &&
+                  (fieldValue === 'Yes' || fieldValue === 'Y')
+                const showSteelineViloTaper = field.name === 'taperVilo' && showSteelineViloTaperPanel
+                const hideSteelineWindowType = field.name === 'windowType' && (!isSteeline || fieldOptions.length === 0)
+
+                if (hideCenturionSectionalTaperHeights || hideSteelineWindowType) {
+                  return null
+                }
 
                 return (
-                  <div key={field.name} className="form-field-group">
-                    <FormField
-                      {...field}
-                      value={manufacturerDetails[field.name] || ''}
-                      onChange={handleManufacturerDetail}
-                      disabled={isReadOnly}
-                    />
-                    {showCustomInput ? (
+                  <Fragment key={field.name}>
+                    <div className="form-field-group">
                       <FormField
-                        label={`${field.label} (Custom value)`}
-                        name={customValueKey}
-                        type="text"
-                        value={manufacturerDetails[customValueKey] || ''}
+                        {...field}
+                        options={fieldOptions}
+                        value={fieldValue}
                         onChange={handleManufacturerDetail}
-                        placeholder={`Enter custom ${field.label.toLowerCase()}`}
                         disabled={isReadOnly}
                       />
+                      {showCustomInput ? (
+                        <FormField
+                          label={`${field.label} (Custom value)`}
+                          name={customValueKey}
+                          type="text"
+                          value={manufacturerDetails[customValueKey] || ''}
+                          onChange={handleManufacturerDetail}
+                          placeholder={`Enter custom ${field.label.toLowerCase()}`}
+                          disabled={isReadOnly}
+                        />
+                      ) : null}
+                    </div>
+                    {showTaperPanel ? (
+                      <div className="centurion-taper-panel-row">
+                        <CenturionRadTaperPanel
+                          manufacturerDetails={manufacturerDetails}
+                          handleManufacturerDetail={handleManufacturerDetail}
+                          disabled={isReadOnly}
+                        />
+                      </div>
                     ) : null}
-                  </div>
+                    {showSteelineViloTaper ? (
+                      <div className="steeline-vilo-taper-panel-row">
+                        <SteelineViloTaperPanel
+                          manufacturerDetails={manufacturerDetails}
+                          handleManufacturerDetail={handleManufacturerDetail}
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                    ) : null}
+                  </Fragment>
                 )
               })}
             </div>

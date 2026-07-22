@@ -102,11 +102,11 @@ export default function Dashboard() {
   }
 
   const getStatusClass = (status) => {
-    const value = String(status || '').toLowerCase()
+    const value = String(status || '').toLowerCase().replace('unsuccussfull', 'unsuccessful')
     if (value.includes('quote')) return 'is-quote'
     if (value.includes('work')) return 'is-work-order'
     if (value.includes('completed')) return 'is-completed'
-    if (value.includes('unsuccussfull') || value.includes('unsuccessful')) return 'is-unsuccessful'
+    if (value.includes('unsuccessful')) return 'is-unsuccessful'
     return 'is-default'
   }
 

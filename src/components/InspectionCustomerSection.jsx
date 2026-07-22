@@ -1,4 +1,3 @@
-import AddressSearch from './AddressSearch'
 import FormCard from './FormCard'
 import FormField from './FormField'
 import Loader from './Loader'
@@ -22,20 +21,18 @@ export default function InspectionCustomerSection({
         {mergedFields.map((field) => {
           if (field.name === 'address') {
             return (
-              <div key={field.name} className="form-field">
-                <label className="field-label">{field.label}</label>
-                <AddressSearch
-                  value={formData.address.replace(/\n/g, ', ')}
-                  onChange={(addressValue) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      address: addressValue,
-                    }))
-                  }
-                  placeholder="Search address..."
-                  disabled={isReadOnly}
-                />
-              </div>
+              <FormField
+                key={field.name}
+                {...field}
+                value={String(formData.address || '').replace(/\n/g, ', ')}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    address: event.target.value,
+                  }))
+                }
+                disabled={isReadOnly}
+              />
             )
           }
           if (field.name === 'jobNumber') {

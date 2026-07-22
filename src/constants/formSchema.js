@@ -89,7 +89,7 @@ export const damageFields = [
   { name: 'radSizeTotal', label: 'Radius Size Total' },
 ]
 
-export const tapperFields = [
+export const taperFields = [
   { name: 'bottom', label: 'Bottom (mm)', type: 'number' },
   { name: 'firstUp', label: '1st Up (mm)', type: 'number' },
   { name: 'second', label: '2nd (mm)', type: 'number' },

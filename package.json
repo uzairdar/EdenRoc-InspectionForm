@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-google-autocomplete": "^2.7.3"
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
